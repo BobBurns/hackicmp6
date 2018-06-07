@@ -25,10 +25,11 @@ func main() {
 		Code:   0,
 		// payload data
 		Data: []byte{
-			'a',
-			'b',
-			'c',
-			'd',
+			'a', //0x00,
+			'b', //0x20,
+			'c', //0x00,
+			'd', //0x00,
+			'e', //0x00,
 			'e',
 			'f',
 			'g',

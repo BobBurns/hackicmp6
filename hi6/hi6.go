@@ -816,6 +816,9 @@ func (h *icmp6Header) marshal() ([]byte, error) {
 	copy(p[40:40+ICMPHeaderLen], b[0:ICMPHeaderLen])
 	copy(p[40+ICMPHeaderLen:40+ICMPHeaderLen+h.PayloadLen], b[ICMPHeaderLen:ICMPHeaderLen+h.PayloadLen])
 
+	//debug
+	fmt.Println("b", b)
+	fmt.Println("p", p)
 	cs := csum(p)
 	b[2] = byte(cs)
 	b[3] = byte(cs >> 8)
