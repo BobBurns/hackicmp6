@@ -1,15 +1,17 @@
 ## HackICMP6
 
-### Go package to mess with IPv6 ICMP packets
+Simple Go package to mess with IPv6 ICMP packets
 
-#### Example Neighbor Advertisement with Router flag set
+[godoc](https://godoc.org/github.com/BobBurns/hackicmp6/hi6)
+
+#### Example Neighbor Advertisement with Override flag set
 
 `import github.com/BobBurns/hackicmp6/hi6`
 
 ```go
 
 	t := hi6.ICMP6{
-		Iface:      os.Args[1],
+		Iface:      "en0",
 		DstIP:      "ff02::1",
 		SrcIP:      "fe80::dead:beef",
 		SrcMAC:     "10:0b:a9:ba:aa:ad",
