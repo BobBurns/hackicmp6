@@ -4,6 +4,9 @@ Simple Go package to mess with IPv6 ICMP packets
 
 [godoc](https://godoc.org/github.com/BobBurns/hackicmp6/hi6)
 
+This package uses the awesome songgao ether and ethernet packages.
+Just type `go get` to get them.
+
 #### Example Neighbor Advertisement with Override flag set
 
 `import github.com/BobBurns/hackicmp6/hi6`
