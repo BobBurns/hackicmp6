@@ -30,7 +30,6 @@ func main() {
 			'c', //0x00,
 			'd', //0x00,
 			'e', //0x00,
-			'e',
 			'f',
 			'g',
 			'h',
@@ -51,7 +50,10 @@ func main() {
 		i++
 		err := t.BuildICMPPacket()
 		if err != nil {
-			panic(err)
+			fmt.Println("errors found...")
+			fmt.Println(err)
+			fmt.Println("exiting.")
+			os.Exit(-1)
 		}
 		for {
 			err = t.Send()

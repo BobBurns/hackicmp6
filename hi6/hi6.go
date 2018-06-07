@@ -280,8 +280,9 @@ func (t *ICMP6) verifyAddr() error {
 	if t.DstMAC == "" {
 		if strings.HasPrefix(t.DstIP, "ff") || strings.HasPrefix(t.DstIP, "FF") {
 			tmpIP := net.ParseIP(t.DstIP)
-			t.DstMAC = fmt.Sprintf("33:33:%x:%x:%x:%x", tmpIP[12], tmpIP[13], tmpIP[14],
-				tmpIP[15])
+			t.DstMAC = fmt.Sprintf("33:33:%02X:%02X:%02X:%02X", tmpIP[12], tmpIP[13], tmpIP[14], tmpIP[15])
+			//debug
+			//fmt.Println("dstMAC", t.DstMAC)
 		} else {
 			fmt.Println("Must have Destination MAC Address")
 			return vErr
@@ -312,17 +313,19 @@ func (t *ICMP6) verifyAddr() error {
 			fmt.Println(err)
 			return vErr
 		}
-		fmt.Println("Flags: ", iface.Flags.String())
+		// debug
+		//fmt.Println("Flags: ", iface.Flags.String())
 
 		for _, a := range iAddr {
 			// handle prefix len on linux
 			ad := strings.Split(a.String(), "/")
-			fmt.Println(ad)
+			// debug
+			//fmt.Println(ad)
 
 			// loopback?
 			if (iface.Flags&net.FlagLoopback) > 0 && strings.Contains(ad[0], ":") {
-				fmt.Println("found loopback")
 				t.SrcIP = ad[0]
+				break
 			} else if strings.HasPrefix(ad[0], "fe80") && t.PreferGlobal == false {
 				t.SrcIP = ad[0]
 				break
@@ -348,7 +351,7 @@ func (t *ICMP6) verifyAddr() error {
 	}
 
 	//debug
-	fmt.Println("Src IP: ", t.SrcIP)
+	//fmt.Println("Src IP: ", t.SrcIP)
 	return nil
 
 }
@@ -376,7 +379,8 @@ func (t *ICMP6) BuildICMPPacket() error {
 		fmt.Println("DataLen does not equal len(data)!")
 	}
 	p.PayloadLen = t.DataLen
-	fmt.Println("payload len data:", p.PayloadLen)
+	// debug
+	//fmt.Println("payload len data:", p.PayloadLen)
 
 	h.Version = 6
 	h.TrafficClass = 0x00
@@ -478,7 +482,7 @@ func (t *ICMP6) BuildICMPPacket() error {
 	} else if t.Type == ICMPTypeRouterRenumbering {
 
 		binary.BigEndian.PutUint32(p.Data[:4], uint32(t.RR_Seqnum))
-		fmt.Println("icmp data: ", p.Data[:4])
+		//fmt.Println("icmp data: ", p.Data[:4])
 
 		// Segnum
 		p.Payload[0] = byte(t.RR_Segnum)
@@ -564,6 +568,12 @@ func (t *ICMP6) BuildICMPPacket() error {
 
 	// should take care of raw data and data tacked
 	// on to options
+
+	if len(t.Data)%2 != 0 {
+		fmt.Println("Data must be on 16 bit boundry")
+		return bErr
+	}
+
 	copy(p.Payload[offset:], t.Data[:])
 
 	ip, err = h.marshal()
@@ -698,7 +708,8 @@ func (t *ICMP6) Send() error {
 	ff := func(frame ethernet.Frame) bool { return true }
 	myDev, err := ether.NewDev(hwIface, ff)
 	if err != nil {
-		panic(err)
+		fmt.Println("Error getting interface", err)
+		return aErr
 	}
 
 	myFrame := make(ethernet.Frame, 1500)
@@ -787,10 +798,12 @@ func (h *icmp6Header) marshal() ([]byte, error) {
 	b[1] = byte(h.Code)
 	b[2] = 0 // checksum 0 before calc
 	b[3] = 0
-	fmt.Println("h.PayloadLen:", h.PayloadLen)
+	//fmt.Println("h.PayloadLen:", h.PayloadLen)
 	copy(b[4:8], h.Data[:4])
-	fmt.Println("buff data ", b[4:8], h.Data[:4])
-	/* ip6_flow */
+
+	// debug
+	//fmt.Println("buff data ", b[4:8], h.Data[:4])
+
 	copy(b[8:8+h.PayloadLen], h.Payload[:h.PayloadLen])
 
 	/* pseudo header for checksum */
@@ -816,9 +829,6 @@ func (h *icmp6Header) marshal() ([]byte, error) {
 	copy(p[40:40+ICMPHeaderLen], b[0:ICMPHeaderLen])
 	copy(p[40+ICMPHeaderLen:40+ICMPHeaderLen+h.PayloadLen], b[ICMPHeaderLen:ICMPHeaderLen+h.PayloadLen])
 
-	//debug
-	fmt.Println("b", b)
-	fmt.Println("p", p)
 	cs := csum(p)
 	b[2] = byte(cs)
 	b[3] = byte(cs >> 8)
