@@ -13,16 +13,15 @@ func main() {
 		os.Exit(-1)
 	}
 	t := hi6.ICMP6{
-		Iface:        os.Args[1],
-		PreferGlobal: false,
-		DstIP:        "ff02::2",
-		SrcIP:        "", // should be inferred from interface
-		SrcMAC:       "", // should be inferred from interface
-		DstMAC:       "", // should be inferred from multicast
-		Type:         hi6.ICMPTypeMulticastListenerQuery,
-		Code:         0,
-		MLD_MaxDelay: uint16(10),
-		MLD_Addr:     "fe80::3",
+		Iface:      os.Args[1],
+		DstIP:      "ff02::1",
+		SrcIP:      "fe80::dead:beef",
+		SrcMAC:     "10:0b:a9:ba:aa:ad",
+		DstMAC:     "33:33:00:00:00:01",
+		Type:       hi6.ICMPTypeNeighborAdvertisement,
+		Code:       0,
+		NA_Flags:   hi6.NA_FLAG_OVERRIDE,
+		TargetAddr: "fe80::3",
 	}
 
 	err := t.BuildICMPPacket()
@@ -39,7 +38,7 @@ func main() {
 			fmt.Println(err)
 			os.Exit(-1)
 		}
-		time.Sleep(time.Duration(30 * time.Second))
+		time.Sleep(time.Duration(1 * time.Second))
 	}
 
 }

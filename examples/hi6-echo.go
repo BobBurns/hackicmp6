@@ -25,11 +25,11 @@ func main() {
 		Code:   0,
 		// payload data
 		Data: []byte{
-			'a', //0x00,
-			'b', //0x20,
-			'c', //0x00,
-			'd', //0x00,
-			'e', //0x00,
+			'a',
+			'b',
+			'c',
+			'd',
+			'e',
 			'f',
 			'g',
 			'h',
@@ -56,7 +56,12 @@ func main() {
 			os.Exit(-1)
 		}
 		for {
+			fmt.Printf(".")
 			err = t.Send()
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(-1)
+			}
 			time.Sleep(time.Duration(1 * time.Second))
 		}
 	}
