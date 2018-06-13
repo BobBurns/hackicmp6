@@ -30,6 +30,7 @@ func main() {
 			'c',
 			'd',
 			'e',
+			'e',
 			'f',
 			'g',
 			'h',
@@ -55,7 +56,6 @@ func main() {
 			fmt.Println("exiting.")
 			os.Exit(-1)
 		}
-		for {
 			fmt.Printf(".")
 			err = t.Send()
 			if err != nil {
@@ -63,7 +63,6 @@ func main() {
 				os.Exit(-1)
 			}
 			time.Sleep(time.Duration(1 * time.Second))
-		}
 	}
 
 }

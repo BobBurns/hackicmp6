@@ -400,154 +400,10 @@ func (t *ICMP6) BuildICMPPacket() error {
 
 	p.Payload = make([]byte, 1500)
 
-	// Build ICMP data from ICMP6 Struct
-	offset := 0
-	if t.Type == ICMPTypeParameterProblem {
-		binary.BigEndian.PutUint32(p.Data[:4], t.ICMP6_pptr)
-	} else if t.Type == ICMPTypePacketTooBig {
-		binary.BigEndian.PutUint32(p.Data[:4], t.ICMP6_mtu)
-	} else if t.Type == ICMPTypeEchoRequest || t.Type == ICMPTypeEchoReply {
-		binary.BigEndian.PutUint16(p.Data[0:2], t.ICMP6_id)
-		binary.BigEndian.PutUint16(p.Data[2:4], t.ICMP6_seq)
-	} else if t.Type == ICMPTypeRouterSolicitation {
-		// reserved
-		binary.BigEndian.PutUint32(p.Data[0:4], uint32(0))
-
-	} else if t.Type == ICMPTypeRouterAdvertisement {
-		p.Data[0] = byte(t.RA_Curhoplimit)
-		p.Data[1] = byte(t.RA_Flags)
-		p.PayloadLen += 8
-		offset = 8
-		binary.BigEndian.PutUint16(p.Data[2:4], uint16(t.RA_Router_lifetime))
-		binary.BigEndian.PutUint32(p.Payload[:4], uint32(t.RA_Reachable))
-		binary.BigEndian.PutUint32(p.Payload[4:8], uint32(t.RA_Retransmit))
-	} else if t.Type == ICMPTypeNeighborSolicitation {
-		offset = 16
-		p.PayloadLen += offset
-		ip := net.ParseIP(t.TargetAddr)
-		if ip == nil {
-			fmt.Println("NS: could not parse target address")
-			return bErr
-		}
-		addr := ip.To16()
-		copy(p.Payload[0:16], addr)
-
-	} else if t.Type == ICMPTypeNeighborAdvertisement {
-		p.Data[0] = byte(t.NA_Flags)
-		offset = 16
-		p.PayloadLen += offset
-		ip := net.ParseIP(t.TargetAddr)
-		if ip == nil {
-			fmt.Println("NA: could not parse target address")
-			return bErr
-		}
-		addr := ip.To16()
-		copy(p.Payload[0:16], addr)
-
-	} else if t.Type == ICMPTypeRedirect {
-		offset = 32
-		p.PayloadLen += offset
-		targetIP := net.ParseIP(t.TargetAddr)
-		if targetIP == nil {
-			fmt.Println("Redirect: could not parse target address")
-			return bErr
-		}
-		addr := targetIP.To16()
-		copy(p.Payload[0:16], addr)
-
-		dstIP := net.ParseIP(t.DestAddr)
-		if dstIP == nil {
-			fmt.Println("Redirect: could not parse destination address")
-			return bErr
-		}
-		addr = dstIP.To16()
-		copy(p.Payload[16:32], addr)
-
-	} else if t.Type == ICMPTypeMulticastListenerQuery ||
-		t.Type == ICMPTypeMulticastListenerReport || t.Type == ICMPTypeMulticastListenerDone {
-
-		binary.BigEndian.PutUint16(p.Data[:2], uint16(t.MLD_MaxDelay))
-		binary.BigEndian.PutUint16(p.Data[2:4], uint16(0))
-
-		offset = 16
-		p.PayloadLen += offset
-		ip := net.ParseIP(t.MLD_Addr)
-		if ip == nil {
-			fmt.Println("NS: could not parse MLD address")
-			return bErr
-		}
-		addr := ip.To16()
-		copy(p.Payload[0:16], addr)
-
-	} else if t.Type == ICMPTypeRouterRenumbering {
-
-		binary.BigEndian.PutUint32(p.Data[:4], uint32(t.RR_Seqnum))
-		//fmt.Println("icmp data: ", p.Data[:4])
-
-		// Segnum
-		p.Payload[0] = byte(t.RR_Segnum)
-		// Flags
-		p.Payload[1] = byte(t.RR_Flags)
-		// MaxDelay
-		binary.BigEndian.PutUint16(p.Payload[2:4], uint16(t.RR_MaxDelay))
-		// Reserved
-		binary.BigEndian.PutUint32(p.Payload[4:8], uint32(0))
-
-		// next pco match part
-		p.Payload[8] = byte(t.RR_PCOMatch.Code)
-		// Oplen not until we know how many UsePrefix parts
-		p.Payload[10] = byte(t.RR_PCOMatch.Ordinal)
-		p.Payload[11] = byte(t.RR_PCOMatch.MatchLen)
-		p.Payload[12] = byte(t.RR_PCOMatch.MinLen)
-		p.Payload[13] = byte(t.RR_PCOMatch.MaxLen)
-		// Reserved
-		binary.BigEndian.PutUint16(p.Payload[14:16], uint16(0))
-
-		// Prefix
-		ip := net.ParseIP(t.RR_PCOMatch.Prefix)
-		if ip == nil {
-			fmt.Println("NS: could not parse RR_PCOMatch prefix")
-			return bErr
-		}
-		addr := ip.To16()
-		copy(p.Payload[16:32], addr)
-
-		// can be more than 1 RR Use
-		i := 0
-		for i, use := range t.RR_PCOUse {
-			// base index
-			b := 32 + (32 * i)
-			p.Payload[b] = byte(use.UseLen)
-			b++
-			p.Payload[b] = byte(use.KeepLen)
-			b++
-			p.Payload[b] = byte(use.RA_Mask)
-			b++
-			p.Payload[b] = byte(use.RA_Flags)
-			b++
-
-			binary.BigEndian.PutUint32(p.Payload[b:b+4], uint32(use.ValidLifetime))
-			b += 4
-			binary.BigEndian.PutUint32(p.Payload[b:b+4], uint32(use.PreferedLifetime))
-			b += 4
-			binary.BigEndian.PutUint32(p.Payload[b:b+4], uint32(use.Flags))
-			b += 4
-
-			// Prefix
-			ip := net.ParseIP(use.Prefix)
-			if ip == nil {
-				fmt.Println("NS: could not parse RR_PCOMatch prefix")
-				return bErr
-			}
-			addr := ip.To16()
-			copy(p.Payload[b:b+16], addr)
-		}
-
-		i++
-		OpLen := (4 * i) + 3
-		p.Payload[9] = byte(OpLen)
-		offset = OpLen * 8
-		p.PayloadLen += offset
+	err, offset := t.buildPayloadFromType(p)
+	if err != nil {
+		fmt.Println(err)
+		return bErr
 	}
 
 	// this will overwrite any data options above
@@ -589,6 +445,163 @@ func (t *ICMP6) BuildICMPPacket() error {
 	t.frame = append(ip, icmp...)
 	return nil
 }
+
+// make build payload modular
+func (t *ICMP6) buildPayloadFromType (p *icmp6Header) (error, int) {
+	bErr := errors.New("Problem with buildPayloadFromType")
+
+	// Build ICMP data from ICMP6 Struct
+	offset := 0
+	if t.Type == ICMPTypeParameterProblem {
+		binary.BigEndian.PutUint32(p.Data[:4], t.ICMP6_pptr)
+	} else if t.Type == ICMPTypePacketTooBig {
+		binary.BigEndian.PutUint32(p.Data[:4], t.ICMP6_mtu)
+	} else if t.Type == ICMPTypeEchoRequest || t.Type == ICMPTypeEchoReply {
+		binary.BigEndian.PutUint16(p.Data[0:2], t.ICMP6_id)
+		binary.BigEndian.PutUint16(p.Data[2:4], t.ICMP6_seq)
+	} else if t.Type == ICMPTypeRouterSolicitation {
+		// reserved
+		binary.BigEndian.PutUint32(p.Data[0:4], uint32(0))
+
+	} else if t.Type == ICMPTypeRouterAdvertisement {
+		p.Data[0] = byte(t.RA_Curhoplimit)
+		p.Data[1] = byte(t.RA_Flags)
+		p.PayloadLen += 8
+		offset = 8
+		binary.BigEndian.PutUint16(p.Data[2:4], uint16(t.RA_Router_lifetime))
+		binary.BigEndian.PutUint32(p.Payload[:4], uint32(t.RA_Reachable))
+		binary.BigEndian.PutUint32(p.Payload[4:8], uint32(t.RA_Retransmit))
+	} else if t.Type == ICMPTypeNeighborSolicitation {
+		offset = 16
+		p.PayloadLen += offset
+		ip := net.ParseIP(t.TargetAddr)
+		if ip == nil {
+			fmt.Println("NS: could not parse target address")
+			return bErr, 0
+		}
+		addr := ip.To16()
+		copy(p.Payload[0:16], addr)
+
+	} else if t.Type == ICMPTypeNeighborAdvertisement {
+		p.Data[0] = byte(t.NA_Flags)
+		offset = 16
+		p.PayloadLen += offset
+		ip := net.ParseIP(t.TargetAddr)
+		if ip == nil {
+			fmt.Println("NA: could not parse target address")
+			return bErr, 0
+		}
+		addr := ip.To16()
+		copy(p.Payload[0:16], addr)
+
+	} else if t.Type == ICMPTypeRedirect {
+		offset = 32
+		p.PayloadLen += offset
+		targetIP := net.ParseIP(t.TargetAddr)
+		if targetIP == nil {
+			fmt.Println("Redirect: could not parse target address")
+			return bErr, 0
+		}
+		addr := targetIP.To16()
+		copy(p.Payload[0:16], addr)
+
+		dstIP := net.ParseIP(t.DestAddr)
+		if dstIP == nil {
+			fmt.Println("Redirect: could not parse destination address")
+			return bErr, 0
+		}
+		addr = dstIP.To16()
+		copy(p.Payload[16:32], addr)
+
+	} else if t.Type == ICMPTypeMulticastListenerQuery ||
+		t.Type == ICMPTypeMulticastListenerReport || t.Type == ICMPTypeMulticastListenerDone {
+
+		binary.BigEndian.PutUint16(p.Data[:2], uint16(t.MLD_MaxDelay))
+		binary.BigEndian.PutUint16(p.Data[2:4], uint16(0))
+
+		offset = 16
+		p.PayloadLen += offset
+		ip := net.ParseIP(t.MLD_Addr)
+		if ip == nil {
+			fmt.Println("NS: could not parse MLD address")
+			return bErr, 0
+		}
+		addr := ip.To16()
+		copy(p.Payload[0:16], addr)
+
+	} else if t.Type == ICMPTypeRouterRenumbering {
+
+		binary.BigEndian.PutUint32(p.Data[:4], uint32(t.RR_Seqnum))
+		//fmt.Println("icmp data: ", p.Data[:4])
+
+		// Segnum
+		p.Payload[0] = byte(t.RR_Segnum)
+		// Flags
+		p.Payload[1] = byte(t.RR_Flags)
+		// MaxDelay
+		binary.BigEndian.PutUint16(p.Payload[2:4], uint16(t.RR_MaxDelay))
+		// Reserved
+		binary.BigEndian.PutUint32(p.Payload[4:8], uint32(0))
+
+		// next pco match part
+		p.Payload[8] = byte(t.RR_PCOMatch.Code)
+		// Oplen not until we know how many UsePrefix parts
+		p.Payload[10] = byte(t.RR_PCOMatch.Ordinal)
+		p.Payload[11] = byte(t.RR_PCOMatch.MatchLen)
+		p.Payload[12] = byte(t.RR_PCOMatch.MinLen)
+		p.Payload[13] = byte(t.RR_PCOMatch.MaxLen)
+		// Reserved
+		binary.BigEndian.PutUint16(p.Payload[14:16], uint16(0))
+
+		// Prefix
+		ip := net.ParseIP(t.RR_PCOMatch.Prefix)
+		if ip == nil {
+			fmt.Println("NS: could not parse RR_PCOMatch prefix")
+			return bErr, 0
+		}
+		addr := ip.To16()
+		copy(p.Payload[16:32], addr)
+
+		// can be more than 1 RR Use
+		i := 0
+		for i, use := range t.RR_PCOUse {
+			// base index
+			b := 32 + (32 * i)
+			p.Payload[b] = byte(use.UseLen)
+			b++
+			p.Payload[b] = byte(use.KeepLen)
+			b++
+			p.Payload[b] = byte(use.RA_Mask)
+			b++
+			p.Payload[b] = byte(use.RA_Flags)
+			b++
+
+			binary.BigEndian.PutUint32(p.Payload[b:b+4], uint32(use.ValidLifetime))
+			b += 4
+			binary.BigEndian.PutUint32(p.Payload[b:b+4], uint32(use.PreferedLifetime))
+			b += 4
+			binary.BigEndian.PutUint32(p.Payload[b:b+4], uint32(use.Flags))
+			b += 4
+
+			// Prefix
+			ip := net.ParseIP(use.Prefix)
+			if ip == nil {
+				fmt.Println("NS: could not parse RR_PCOMatch prefix")
+				return bErr, 0
+			}
+			addr := ip.To16()
+			copy(p.Payload[b:b+16], addr)
+		}
+
+		i++
+		OpLen := (4 * i) + 3
+		p.Payload[9] = byte(OpLen)
+		offset = OpLen * 8
+		p.PayloadLen += offset
+	}
+	return nil, offset
+}
+
 
 // build icmp6 header options and append to template data
 func (t *ICMP6) buildOptions() (int, error) {

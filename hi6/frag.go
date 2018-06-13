@@ -1,5 +1,6 @@
 package hi6
 
+/*
 import (
 	"errors"
 	"fmt"
@@ -83,3 +84,4 @@ func (t *ICMP6) SendFrag(file string) error {
 	// how to determine data for different
 	// payload types. ie na vs ra
 }
+*/
